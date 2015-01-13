@@ -1,5 +1,5 @@
 ---
-title: "Chapter 2: Short Tour"
+title: 'Chapter 2: Short Tour'
 author: "Niko Steinhoff"
 date: "13 Jan 2015"
 output: html_document
@@ -70,7 +70,7 @@ xyplot(FE ~ EngDispl | Year, data = plotData,
 ___
 #### Fit a single linear model using 10-fold CV with the 'caret' package:
 
-```{r 'model fitting lm'}
+```{r 'model fitting lm', fig.align='center'}
 library(caret)
 set.seed(1)
 lmOneFit <- train(FE ~ EngDispl, 
@@ -93,6 +93,7 @@ xyplot(lmOne ~ FE | Year, data = plotData,
        aspect = 1,
        relation = "same",
        between = list(x = 1.2))
+
 ```
 
 
