@@ -1,24 +1,98 @@
 ---
-title: "Chapter2_ShortTour"
+title: "Chapter 2: Short Tour"
 author: "Niko Steinhoff"
 date: "13 Jan 2015"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Examples:
+---
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r}
-summary(cars)
+___
+#### Get the data:
+
+- Import the library and the dataset 
+```{r 'library import 1'}
+library(AppliedPredictiveModeling)
+data(FuelEconomy)
 ```
 
-You can also embed plots, for example:
-
-```{r, fig.align='center', echo=FALSE}
-plot(cars)
+- Check the size of the different data frames
+```{r 'comparing dimensions of the cars data'}
+dimensions <- sapply(list(cars2010, cars2011), dim)
+dimnames(dimensions) <- list(c("rows", "columns"), c("cars2010", "cars2011"))
+dimensions
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+- Check for missing values
+```{r 'checking for missing values'}
+count.Na <- function(x){
+  sum(is.na(x))
+}
+sapply(list(cars2010, cars2011), apply, 2, count.Na)
+```
+
+___
+#### Formatting the data for plotting against engine displacement:
+
+- Sort by engine displacement
+```{r 'sort by engine displacement'}
+cars2010 <- cars2010[order(cars2010$EngDispl), ]
+cars2011 <- cars2011[order(cars2011$EngDispl), ]
+
+lapply(list(cars2010[ , 1:5], cars2011[ , 1:5]), head)
+```
+
+- Combine data into one data frame
+```{r 'combine data for plotting'}
+cars2010a <- cars2010
+cars2010a$Year <- "2010 Model Year"
+cars2011a <- cars2011
+cars2011a$Year <- "2011 Model Year"
+
+plotData <- rbind(cars2010a, cars2011a)
+```
+
+___
+#### Plotting fuel economy against engine displacement:
+
+```{r 'plot1', fig.align='center'}
+library(lattice)
+xyplot(FE ~ EngDispl | Year, data = plotData,
+       xlab = "Engine Displacement", 
+       ylab = "Fuel Efficiency (MPG)", 
+       layout = c(2, 1),
+       aspect = 1,
+       between = list(x = 1.2))
+```
+
+___
+#### Fit a single linear model using 10-fold CV with the 'caret' package:
+
+```{r 'model fitting lm'}
+library(caret)
+set.seed(1)
+lmOneFit <- train(FE ~ EngDispl, 
+                  data = cars2010, 
+                  method = "lm",
+                  trControl = trainControl(method = "cv"))
+lmOneFit
+
+plotData$lmOne <- predict(lmOneFit, plotData)
+xyplot(lmOne ~ FE | Year, data = plotData,
+       panel = function(x, y){
+         panel.xyplot(x, y)
+         panel.abline(0, 1)
+       },
+       xlim = c(10, 70),
+       ylim = c(10, 70),
+       xlab = "Observed", 
+       ylab = "Predicted", 
+       layout = c(2, 1),
+       aspect = 1,
+       relation = "same",
+       between = list(x = 1.2))
+```
 
 
