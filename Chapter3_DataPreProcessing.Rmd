@@ -19,57 +19,106 @@ segTrainClass <- segTrain$Class
 
 ___
 #### Data Transformations for Individual Predictors
-```{r 'Data Transformations for Individual Predictors', fig.align='center', fig.height=7, fig.width=7}
+
+###### Skewness:
+A rule of thumb for checking skewness of data is the ratio between the maximum and the minimum values such that $\frac{max}{min} > 20$ is a sign of skewness. 
+The default measure of skewness implemented in the 'e1071' package is calculated by the formula:
+$$
+skewness = 
+\frac{
+    \frac{1}{n} \sum_{i=1}^{n} (x_{i} - \bar{x})^3
+}{
+    [
+        \frac{1}{n-1} \sum_{i=1}^{n} (x_{i} - \bar{x})^2
+    ]^\frac{3}{2}
+}
+$$.
+
+Testing a single predictor for skewness:
+```{r 'Data Transformations for Individual Predictors'}
 ## The column VarIntenCh3 measures the standard deviation of the intensity
 ## of the pixels in the actin filaments
-
 ## Getting the ratio of max vs. min values of VarIntenCh3
 max(segTrainX$VarIntenCh3)/min(segTrainX$VarIntenCh3)
 
 ## Checking skewness of VarIntenCh3
 library(e1071)
 skewness(segTrainX$VarIntenCh3)
+```
 
-## Use caret's preProcess function to transform for skewness
-library(caret)
-segPP <- preProcess(segTrainX, method = "BoxCox")
-
-## Apply the transformations
-segTrainTrans <- predict(segPP, segTrainX)
-
-
-## Results for a single predictor VarIntenCh3
-segPP$bc$VarIntenCh3
-
+###### Dealing with skewness:
+Some data might be skewed in terms of natural units, but normally distributed on a logarithmic scale.
+```{r 'Plot natural vs log transformation', fig.align='center', fig.height=7, fig.width=7}
+library(ggplot2)
 ## Plotting original and log-transformed variable VarIntenCh3
-plotNatural <- ggplot(segTrainX, aes(x = VarIntenCh3, fill = segTrain$Class)) +
+plotNatural <- ggplot(segTrainX, aes(x = VarIntenCh3)) +
     geom_histogram(color = "gray") +
-    labs(x = "Natural Units") + 
-    guides(fill = FALSE)
+    labs(x = "Natural Units")
 
-plotLog <- ggplot(segTrainX, aes(x = log(VarIntenCh3), fill = segTrain$Class)) +
+plotLog <- ggplot(segTrainX, aes(x = log(VarIntenCh3))) +
     geom_histogram(color = "gray") +
-    labs(x = "Log Units") + 
-    guides(fill = FALSE)
+    labs(x = "Log Units")
 
 library(gridExtra)
 ## Suppress stat_bin message and position_stack (rounding?) warning
 suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
 
+```
 
-## Results for a single predictor PerimCh1
+A more generalized approach as proposed by Box and Cox (1964) estimates a parameter $\lambda$ using MLE and transforms the data according to the formula:
+$$
+\begin{aligned}
+    x =
+    \begin{cases}
+        \frac{x^{\lambda} - 1}{\lambda} & if \lambda \neq 0 \\
+        log(x) & if \lambda = 0 \\
+    \end{cases}
+\end{aligned}
+$$
+```{r 'BoxCox transformation'}
+## Use caret's preProcess function to transform for skewness
+library(caret)
+segPP <- preProcess(segTrainX, method = "BoxCox")
+
+## Apply the transformations and save in new data.frame
+segTrainTrans <- predict(segPP, segTrainX)
+```
+
+```{r 'BoxCox results 1'}
+## Results for a predictor VarIntenCh3
+segPP$bc$VarIntenCh3
+```
+
+With $\lambda = 0$ the transformation will be the natural logarithm like we did before.
+```{r 'Plot natural vs BoxCox transformation 1', fig.align='center', fig.height=7, fig.width=7}
+## Plotting original and BoxCox-transformed variable VarIntenCh3
+plotNatural <- ggplot(segTrainX, aes(x = VarIntenCh3)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Natural Units")
+
+plotLog <- ggplot(segTrainTrans, aes(x = VarIntenCh3)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Transformed")
+
+## Suppress stat_bin message and position_stack (rounding?) warning
+suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
+```
+
+```{r 'BoxCox results 2'}
+## Results for a predictor PerimCh1
 segPP$bc$PerimCh1
+```
 
+The 'BoxCox'transformation with $\lambda = -1.1$ results in the following distribution.
+```{r 'Plot natural vs BoxCox transformation 2', fig.align='center', fig.height=7, fig.width=7}
 ## Plotting original and BoxCox-transformed variable PerimCh1
-plotNatural <- ggplot(segTrainX, aes(x = PerimCh1, fill = segTrain$Class)) +
+plotNatural <- ggplot(segTrainX, aes(x = PerimCh1)) +
     geom_histogram(color = "gray") +
-    labs(x = "Natural Units") + 
-    guides(fill = FALSE)
+    labs(x = "Natural Units")
 
-plotLog <- ggplot(segTrainTrans, aes(x = PerimCh1, fill = segTrain$Class)) +
+plotLog <- ggplot(segTrainTrans, aes(x = PerimCh1)) +
     geom_histogram(color = "gray") +
-    labs(x = "Transformed") + 
-    guides(fill = FALSE)
+    labs(x = "Transformed")
 
 ## Suppress stat_bin message and position_stack (rounding?) warning
 suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
@@ -100,5 +149,5 @@ plotTrans <- ggplot(as.data.frame(pr$x), aes(x = PC1, y = PC2)) +
 ## Suppress stat_bin message and position_stack (rounding?) warning
 suppressWarnings(suppressMessages(grid.arrange(plotOriginal, plotTrans, ncol = 2)))
 ```
-Note: The axes in the book for the first plot are flipped.
+Note: The axes in the book for the first plot are flipped and incorrectly labeled.
 
