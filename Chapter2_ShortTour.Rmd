@@ -1,13 +1,7 @@
 ---
-title: 'Chapter 2: Short Tour'
-author: "Niko Steinhoff"
-date: "13 Jan 2015"
+title: 'Chapter 2: Examples'
 output: html_document
 ---
-
-Examples:
----
-
 
 ___
 #### Get the data:
@@ -27,10 +21,11 @@ dimensions
 
 - Check for missing values
 ```{r 'checking for missing values'}
-count.Na <- function(x){
-  sum(is.na(x))
+countNa <- function(x){
+    sum(is.na(x))
 }
-sapply(list(cars2010, cars2011), apply, 2, count.Na)
+
+sapply(list(cars2010, cars2011), apply, 2, countNa)
 ```
 
 ___
@@ -41,6 +36,8 @@ ___
 cars2010 <- cars2010[order(cars2010$EngDispl), ]
 cars2011 <- cars2011[order(cars2011$EngDispl), ]
 
+
+# print the first rows to confirm
 lapply(list(cars2010[ , 1:5], cars2011[ , 1:5]), head)
 ```
 
@@ -58,42 +55,114 @@ ___
 #### Plotting fuel economy against engine displacement:
 
 ```{r 'plot1', fig.align='center'}
-library(lattice)
-xyplot(FE ~ EngDispl | Year, data = plotData,
-       xlab = "Engine Displacement", 
-       ylab = "Fuel Efficiency (MPG)", 
-       layout = c(2, 1),
-       aspect = 1,
-       between = list(x = 1.2))
+library(ggplot2)
+ggplot(plotData, aes(x = FE, y = EngDispl)) +
+    geom_point(alpha = 1/2) +
+    labs(x = "Engine Displacement", y = "Fuel Efficiency (MPG)") +
+    facet_grid(. ~ Year)
+        
 ```
 
 ___
 #### Fit a single linear model using 10-fold CV with the 'caret' package:
+```{r 'model fitting lm'}
 
-```{r 'model fitting lm', fig.align='center'}
 library(caret)
 set.seed(1)
 lmOneFit <- train(FE ~ EngDispl, 
-                  data = cars2010, 
-                  method = "lm",
-                  trControl = trainControl(method = "cv"))
+                    data = cars2010, 
+                    method = "lm",
+                    trControl = trainControl(method = "cv"))
 lmOneFit
+```
 
-plotData$lmOne <- predict(lmOneFit, plotData)
-xyplot(lmOne ~ FE | Year, data = plotData,
-       panel = function(x, y){
-         panel.xyplot(x, y)
-         panel.abline(0, 1)
-       },
-       xlim = c(10, 70),
-       ylim = c(10, 70),
-       xlab = "Observed", 
-       ylab = "Predicted", 
-       layout = c(2, 1),
-       aspect = 1,
-       relation = "same",
-       between = list(x = 1.2))
+- Define plotting functions
+```{r 'defining plots with ggplot2'}
+
+library(ggplot2)
+library(gridExtra)
+
+plotModel <- function(model, data, title){
+    data$modelFit <- predict(model, data)
+    
+    plotFit <- ggplot(data) +
+        geom_point(aes(x = EngDispl, y = FE), alpha = 1/2) +
+        geom_line(aes(x = EngDispl, y = modelFit, color = 'red')) + 
+        guides(color = FALSE) +
+        ggtitle(title) +
+        labs(x = "Engine Displacement", y = "Fuel Efficiency (MPG)") +
+        facet_grid(. ~ Year)
+
+    plotCompare <- ggplot(data, aes(x = FE, y = modelFit)) +
+        geom_point(alpha = 1/2) +
+        geom_abline(slope = 1, linetype = 'dashed', color = 'grey') + 
+        xlim(10, 70) +
+        ylim(10, 70) + 
+        labs(x = "Observed", y = "Predicted") +
+        facet_grid(. ~ Year)
+
+grid.arrange(plotFit, plotCompare, nrow = 2) 
+}
 
 ```
 
+- Plot linear model
+```{r 'plot linear', fig.align='center', fig.height=7, fig.width=7}
+    plotModel(lmOneFit, plotData, 'Linear Model')
+```
+
+___
+#### Fit a quadratic model
+```{r 'fitting quadratic model'}
+cars2010$ED2 <- cars2010$EngDispl^2
+cars2011$ED2 <- cars2011$EngDispl^2
+plotData$ED2 <- plotData$EngDispl^2
+
+set.seed(1)
+lmTwoFit <- train(FE ~ EngDispl + ED2,
+                    data = cars2010,
+                    method = 'lm',
+                    trControl = trainControl(method = 'cv'))
+lmTwoFit
+
+```
+
+- Plot quadratic model
+```{r 'plot quadratic', fig.align='center', fig.height=7, fig.width=7}
+    plotModel(lmTwoFit, plotData, 'Quadratic Model')
+```
+
+___
+#### Fit a MARS model (earth package)
+```{r 'fit MARS', fig.align='center'}
+library(earth)
+set.seed(1)
+marsFit <-train(FE ~ EngDispl,
+                data = cars2010,
+                method = "earth",
+                tuneLength = 15,
+                trControl = trainControl(method = "cv"))
+marsFit
+
+# Plot tuning parameter profile
+plot(marsFit)
+```
+
+- Plot MARS model
+```{r 'plot MARS', fig.align='center', fig.height=7, fig.width=7}
+    plotModel(marsFit, plotData, 'MARS Model')
+```
+
+___
+#### Get test set performance values via caret's postResample function
+```{r 'test performances'}
+## Predict the test set data
+cars2011$lm1  <- predict(lmOneFit,  cars2011)
+cars2011$lm2  <- predict(lmTwoFit,  cars2011)
+cars2011$mars <- predict(marsFit, cars2011)
+
+postResample(pred = cars2011$lm1,  obs = cars2011$FE)
+postResample(pred = cars2011$lm2,  obs = cars2011$FE)
+postResample(pred = cars2011$mars, obs = cars2011$FE)
+```
 
