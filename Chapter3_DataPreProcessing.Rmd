@@ -1,0 +1,104 @@
+---
+title: 'Chapter 3: Data Pre-processing'
+output: html_document
+---
+
+___
+#### Data Import
+```{r 'Case Study'}
+library(AppliedPredictiveModeling)
+data(segmentationOriginal)
+
+## Retain the original training set
+segTrain <- subset(segmentationOriginal, Case == "Train")
+
+## Remove the first three columns (identifier columns)
+segTrainX <- segTrain[, -(1:3)]
+segTrainClass <- segTrain$Class
+```
+
+___
+#### Data Transformations for Individual Predictors
+```{r 'Data Transformations for Individual Predictors', fig.align='center', fig.height=7, fig.width=7}
+## The column VarIntenCh3 measures the standard deviation of the intensity
+## of the pixels in the actin filaments
+
+## Getting the ratio of max vs. min values of VarIntenCh3
+max(segTrainX$VarIntenCh3)/min(segTrainX$VarIntenCh3)
+
+## Checking skewness of VarIntenCh3
+library(e1071)
+skewness(segTrainX$VarIntenCh3)
+
+## Use caret's preProcess function to transform for skewness
+library(caret)
+segPP <- preProcess(segTrainX, method = "BoxCox")
+
+## Apply the transformations
+segTrainTrans <- predict(segPP, segTrainX)
+
+
+## Results for a single predictor VarIntenCh3
+segPP$bc$VarIntenCh3
+
+## Plotting original and log-transformed variable VarIntenCh3
+plotNatural <- ggplot(segTrainX, aes(x = VarIntenCh3, fill = segTrain$Class)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Natural Units") + 
+    guides(fill = FALSE)
+
+plotLog <- ggplot(segTrainX, aes(x = log(VarIntenCh3), fill = segTrain$Class)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Log Units") + 
+    guides(fill = FALSE)
+
+library(gridExtra)
+## Suppress stat_bin message and position_stack (rounding?) warning
+suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
+
+
+## Results for a single predictor PerimCh1
+segPP$bc$PerimCh1
+
+## Plotting original and BoxCox-transformed variable PerimCh1
+plotNatural <- ggplot(segTrainX, aes(x = PerimCh1, fill = segTrain$Class)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Natural Units") + 
+    guides(fill = FALSE)
+
+plotLog <- ggplot(segTrainTrans, aes(x = PerimCh1, fill = segTrain$Class)) +
+    geom_histogram(color = "gray") +
+    labs(x = "Transformed") + 
+    guides(fill = FALSE)
+
+## Suppress stat_bin message and position_stack (rounding?) warning
+suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
+```
+
+___
+#### Data Transformations for Multiple Predictors
+```{r 'Data Transformations for Multiple Predictors', fig.align='center', fig.height=7, fig.width=8}
+
+## R's prcomp is used to conduct PCA
+pr <- prcomp(~ AvgIntenCh1 + EntropyIntenCh1, 
+             data = segTrainTrans, 
+             scale. = TRUE)
+
+## Scatterplot of original and extracted predictors
+plotOriginal <- ggplot(segTrainTrans, aes(x = AvgIntenCh1, y = EntropyIntenCh1)) +
+    geom_point(aes(color = segTrain$Class), alpha = 1/2) +
+    guides(color = FALSE) +
+    labs(title = "Original", x = "Channel 1 Fiber Width", y = "Intensity Entropy Channel 1")
+
+plotTrans <- ggplot(as.data.frame(pr$x), aes(x = PC1, y = PC2)) +
+    geom_point(aes(color = segTrain$Class), alpha = 1/2) +
+    labs(title = "Extracted",x = "Principle Component #1", y = "Principle Component #2") +
+    xlim(c(-4,4)) +
+    ylim(c(-4,4)) + 
+    theme(legend.position = "top", legend.title = element_blank())
+
+## Suppress stat_bin message and position_stack (rounding?) warning
+suppressWarnings(suppressMessages(grid.arrange(plotOriginal, plotTrans, ncol = 2)))
+```
+Note: The axes in the book for the first plot are flipped.
+
