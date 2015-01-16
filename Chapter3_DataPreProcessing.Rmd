@@ -35,7 +35,7 @@ skewness =
 $$.
 
 Testing a single predictor for skewness:
-```{r 'Data Transformations for Individual Predictors'}
+```{r 'Measuring skewness'}
 ## The column VarIntenCh3 measures the standard deviation of the intensity
 ## of the pixels in the actin filaments
 ## Getting the ratio of max vs. min values of VarIntenCh3
@@ -126,7 +126,9 @@ suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
 
 ___
 #### Data Transformations for Multiple Predictors
-```{r 'Data Transformations for Multiple Predictors', fig.align='center', fig.height=7, fig.width=8}
+##### Two predictors
+Data transformation for two predictors using the 'prcomp' function from the 'stats' package
+```{r 'Data Transformations using prcomp', fig.align='center', fig.height=7, fig.width=8}
 
 ## R's prcomp is used to conduct PCA
 pr <- prcomp(~ AvgIntenCh1 + EntropyIntenCh1, 
@@ -150,4 +152,91 @@ plotTrans <- ggplot(as.data.frame(pr$x), aes(x = PC1, y = PC2)) +
 suppressWarnings(suppressMessages(grid.arrange(plotOriginal, plotTrans, ncol = 2)))
 ```
 Note: The axes in the book for the first plot are flipped and incorrectly labeled.
+
+##### Entire dataset
+Zero variance predictors need to be removed, because PCA uses variance to determine the components.
+```{r 'Find and remove zero variance predictors'}
+## Check for zero variance predictors
+isZV <- apply(segTrainX, 2, function(x) length(unique(x)) == 1)
+
+## Count
+sum(isZV)
+
+## Show
+isZV[isZV == TRUE]
+
+## Remove
+segTrainX <- segTrainX[ , !isZV]
+```
+
+Data Transformation of the entire dataset using the interface offered by the 'caret' package.
+```{r 'Data transformation with caret'}
+## Get the pre-process transformation
+segPP <- preProcess(segTrainX, method = c("BoxCox", "center", "scale"))
+
+## Apply the transformation
+segTrainTrans <- predict(segPP, segTrainX)
+
+## PCA using prcomp
+segPCA <- prcomp(segTrainTrans, center = TRUE, scale. = TRUE)
+## PCA using caret
+segPCA2 <- preProcess(segTrainTrans, method = c("pca"))
+
+## The dataset of principle components
+segPCATrans <- as.data.frame(segPCA$x)
+segPCATrans2 <- predict(segPCA2, segTrainTrans)
+
+## Comparing first three components
+lapply(list(segPCATrans[ , 1:3], segPCATrans2[ , 1:3]), head)
+```
+
+Plot matrix of the first three components
+```{r 'Plotting 3 components', fig.align='center', fig.height=7, fig.width=7}
+## Plot matrix for the first 3 components
+library(ggplot2)
+library(GGally)
+ggpairs(cbind(segPCATrans, segTrainClass),
+        columns = 1:3,
+        upper = list(continuous = "cor"),
+        color = "segTrainClass",
+        alpha = 1/2, 
+        axisLabels = "internal"
+        )
+```
+
+Deriving the channels that are associated with the original predictors.
+```{r 'Derive channel variable'}
+## Get predictor channels 
+vars <- rownames(segPCA$rotation)
+channel <- rep(NA, length(vars))
+channel[grepl("Ch1$", vars)] <- "CH 1"
+channel[grepl("Ch2$", vars)] <- "CH 2"
+channel[grepl("Ch3$", vars)] <- "CH 3"
+channel[grepl("Ch4$", vars)] <- "CH 4"
+channel <- as.factor(channel)
+
+## Number of predictors not associated with any channel
+sum(is.na(channel))
+```
+
+Plot the original predictors' loadings for the first three components and color by the corresponding channels.
+```{r 'Rotations', fig.align='center', fig.height=7, fig.width=7}
+## Get rotations
+segRot <- as.data.frame(segPCA$rotation[ , 1:3])
+
+## Add channel 
+segRot$channel <- channel
+## Remove incomplete cases
+segRot <- segRot[complete.cases(segRot), ]
+
+## Plot matrix
+matrixPlot <- ggpairs(segRot,
+        columns = 1:3,
+        color = "channel",
+        alpha = 1/2, 
+        axisLabels = "none"
+        )
+matrixPlot
+```
+
 
