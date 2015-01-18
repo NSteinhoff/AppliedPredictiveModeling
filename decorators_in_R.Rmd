@@ -69,15 +69,15 @@ makeCached <- function(func){
         if(needToEvaluate){
             print("Evaluating function")
             returnValue <- func(...)
+                 
+            ## '<<-' double assignment operator needed to search in parent environment
+            cachedReturnValue <<- returnValue
+            lastArgs <<- list(...)
         } else{
             print("Retrieving cached value")
             returnValue <- cachedReturnValue
         }
-        
-        ## '<<-' double assignment operator needed to search in parent environment
-        cachedReturnValue <<- returnValue
-        lastArgs <<- list(...)
-        
+   
         force(returnValue)
     }
 }
