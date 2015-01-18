@@ -100,7 +100,7 @@ cachedLoggedSum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
 cachedLoggedSum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
 ```
 
-Using the cacing decorator for more complex return types:
+Using the caching decorator for more complex return types:
 ```{r 'More complex functions'}
 data(cars)
 
