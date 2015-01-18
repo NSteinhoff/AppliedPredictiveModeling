@@ -1,0 +1,122 @@
+---
+title: "Decorators in R"
+author: "Niko Steinhoff"
+date: "18 Jan 2015"
+output: html_document
+---
+
+A few examples of how Python-style decorators (@decorator) can be done in *R* in order to add functionality to existing functions.
+
+#### A decorator function for logging the function's arguments and return value.
+```{r 'Logging decorator'}
+makeLogged <- function(func){
+    function(...){
+        returnValue <- func(...)
+        
+        args <- list(...)
+        
+        print("Arguments:")
+        for(i in 1:length(args)){
+            print(paste(names(args)[i], args[i], sep = " = "))
+        }
+        
+        print(paste("Returns", returnValue, sep = ": "))
+        
+        force(returnValue)
+    }   
+}
+loggedMean <- makeLogged(mean)
+loggedSum <- makeLogged(sum)
+```
+
+The original function that was passed to the decorator is saved in the environment of the resulting decorated version.
+```{r 'Looking at the environment'}
+env <- environment(loggedMean)
+ls(env)
+env$func
+
+environment(loggedSum)$func
+```
+
+The decorated function is called exactly like the original and returns the same value.
+```{r 'Calling loggedMean'}
+mean(c(-10000,1:10, 99999), trim = 0.1)
+loggedMean(c(-10000,1:10, 99999), trim = 0.1)
+```
+
+The decorated function matches named arguments.
+```{r 'Calling loggedSum'}
+sum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
+loggedSum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
+```
+___
+
+#### A decorator for making any function cached
+```{r 'Caching decorator'}
+makeCached <- function(func){
+    cachedReturnValue <- NULL
+    lastArgs <- NULL
+    function(...){
+        needToEvaluate <- FALSE
+        if(is.null(cachedReturnValue) || is.null(lastArgs)){
+            needToEvaluate <- TRUE
+            print("First time")
+        } else if(!identical(lastArgs, list(...))){
+            needToEvaluate <- TRUE
+            print("Different arguments")
+        }
+        
+        if(needToEvaluate){
+            print("Evaluating function")
+            returnValue <- func(...)
+        } else{
+            print("Retrieving cached value")
+            returnValue <- cachedReturnValue
+        }
+        
+        ## '<<-' double assignment operator needed to search in parent environment
+        cachedReturnValue <<- returnValue
+        lastArgs <<- list(...)
+        
+        force(returnValue)
+    }
+}
+```
+
+Calling the cached function:
+```{r 'Calling cached function'}
+cachedMean <- makeCached(mean)
+cachedMean(c(1,2,3))
+cachedMean(c(1,2,3))
+cachedMean(c(1,2,3,5))
+cachedMean(c(1,2,3,5))
+```
+
+Combining decorators: 
+The second time around the loggedSum function doesn't get called, hence no logging.
+```{r 'Combining operators'}
+cachedLoggedSum <- makeCached(loggedSum)
+cachedLoggedSum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
+cachedLoggedSum(na.rm = TRUE, 1, 2, three = 3, c(10,NA,12), onehundred = 100)
+```
+
+Using the cacing decorator for more complex return types:
+```{r 'More complex functions'}
+data(cars)
+
+lm(dist ~ speed, data = cars)
+
+cachedLm <- makeCached(lm)
+cachedLm(dist ~ speed, data = cars)
+cachedLm(dist ~ speed, data = cars)
+```
+
+Checking performance:
+```{r 'Checking performance'}
+cachedLm <- makeCached(lm)
+system.time(cachedLm(dist ~ speed, data = cars))
+system.time(cachedLm(dist ~ speed, data = cars))
+```
+
+
+
