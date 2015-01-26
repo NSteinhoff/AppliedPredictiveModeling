@@ -4,7 +4,7 @@ author: "Niko Steinhoff"
 output: html_document
 ---
 
-#### Data Splitting
+## Data Splitting
 ```{r 'Loading two-class data'}
 library(AppliedPredictiveModeling)
 data(twoClassData)
@@ -20,7 +20,7 @@ y <- classes
 
 ```
 
-###### Simple training/test split
+#### Simple training/test split
 ```{r 'Simple Partitioning'}
 library(caret)
 
@@ -49,7 +49,7 @@ y_test <- y[-trainingRows]
 dim(X_train)[1]/(dim(X_test)[1] + dim(X_train)[1])
 ```
 
-###### Resampling methods
+#### Resampling methods
 Repeated training/test splits:
 ```{r 'Repeated training/test splits'}
 # Set random seed so results become reproducible
@@ -104,7 +104,7 @@ multifolds <- createMultiFolds(y, k = 10, times = 5)
 str(multifolds[1:25])
 ```
 
-#### Basic model building
+## Basic model building
 ```{r 'KNN'}
 # Fitting a k-nearest neighbors model
 knnFit <- knn3(x = X_train, y = y_train, k = 5)
