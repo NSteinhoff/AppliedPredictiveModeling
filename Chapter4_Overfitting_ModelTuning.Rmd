@@ -20,7 +20,7 @@ y <- classes
 
 ```
 
-## Simple training/test split
+###### Simple training/test split
 ```{r 'Simple Partitioning'}
 library(caret)
 
@@ -49,7 +49,7 @@ y_test <- y[-trainingRows]
 dim(X_train)[1]/(dim(X_test)[1] + dim(X_train)[1])
 ```
 
-## Resampling methods
+###### Resampling methods
 Repeated training/test splits:
 ```{r 'Repeated training/test splits'}
 # Set random seed so results become reproducible
