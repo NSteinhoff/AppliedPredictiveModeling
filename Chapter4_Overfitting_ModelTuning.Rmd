@@ -1,0 +1,120 @@
+---
+title: 'Chapter 4: Overfitting and Model Tuning'
+author: "Niko Steinhoff"
+output: html_document
+---
+
+#### Data Splitting
+```{r 'Loading two-class data'}
+library(AppliedPredictiveModeling)
+data(twoClassData)
+
+str(predictors)
+str(classes)
+
+## using scikit-learn notation
+# Capital X is the matrix of predictors
+X <- predictors
+# Lowercase y is the vector of classification labels
+y <- classes
+
+```
+
+## Simple training/test split
+```{r 'Simple Partitioning'}
+library(caret)
+
+# Set random seed so results become reproducible
+set.seed(1)
+
+# Stratified data partitioning with 80% of samples in the training set. 
+# Returns a matrix of row numbers. In this case the matrix has only one column,
+# because we only sample once. Resampling will add additional columns.
+trainingRows <- createDataPartition(y,
+                                    p = 0.8,
+                                    list = FALSE)
+# Convert to vector (not necessary)
+trainingRows <- trainingRows[, 1]
+
+head(trainingRows)
+
+# Subsetting by training row indices and converting predictors to matrix.
+X_train <- as.matrix(X[trainingRows, ])
+y_train <- y[trainingRows]
+
+X_test <- as.matrix(X[-trainingRows, ])
+y_test <- y[-trainingRows]
+
+# Check the ratio between training and test sets
+dim(X_train)[1]/(dim(X_test)[1] + dim(X_train)[1])
+```
+
+## Resampling methods
+Repeated training/test splits:
+```{r 'Repeated training/test splits'}
+# Set random seed so results become reproducible
+set.seed(1)
+
+# Creating 3 different splits
+repeatedSplits <- createDataPartition(y,
+                                      p = 0.8,
+                                      times = 3)
+
+str(repeatedSplits)
+```
+
+Bootstrap:
+```{r 'Bootstrap'}
+# Set random seed so results become reproducible
+set.seed(1)
+
+# Creating 10 different bootstrapped samples
+bootstrap <- createResample(y, times = 10)
+str(bootstrap)
+# Frequencies of rows shows that some samples have been selected multiple times
+table(bootstrap[[1]])
+
+# Checking which rows were not selected. These would be used for testing.
+notInBootstrap <- lapply(bootstrap, function(x){
+    setdiff(1:length(x), x)
+})
+str(notInBootstrap)
+```
+
+Folds:
+```{r 'Folds'}
+# Set random seed so results become reproducible
+set.seed(1)
+
+# Creating k-fold split
+# Returns the training rows for each fold
+trainingFolds <- createFolds(y, k = 10, returnTrain = TRUE)
+str(trainingFolds)
+
+# Training/test split for the first fold
+X_train_fold1 <- X[trainingFolds[[1]], ]
+y_train_fold1 <- y[trainingFolds[[1]]]
+
+X_test_fold1 <- X[-trainingFolds[[1]], ]
+y_test_fold1 <- y[-trainingFolds[[1]]]
+
+
+# Creating multiple independent k-fold splits
+multifolds <- createMultiFolds(y, k = 10, times = 5)
+str(multifolds[1:25])
+```
+
+#### Basic model building
+```{r 'KNN'}
+# Fitting a k-nearest neighbors model
+knnFit <- knn3(x = X_train, y = y_train, k = 5)
+knnFit
+
+# Predicting test data
+knnPrediction <- predict(knnFit, newdata = X_test, type = "class")
+head(knnPrediction)
+
+# Check performance
+confusionMatrix(data = knnPrediction, reference = y_test)
+```
+

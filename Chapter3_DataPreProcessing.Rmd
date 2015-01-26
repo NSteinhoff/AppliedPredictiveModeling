@@ -15,6 +15,8 @@ segTrain <- subset(segmentationOriginal, Case == "Train")
 ## Remove the first three columns (identifier columns)
 segTrainX <- segTrain[, -(1:3)]
 segTrainClass <- segTrain$Class
+segTrainCase <- segTrain$Case
+segTrainCellID <- segTrain$Cell
 ```
 
 ___
