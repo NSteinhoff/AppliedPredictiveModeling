@@ -1,10 +1,12 @@
 ---
 title: 'Chapter 3: Data Pre-processing'
-output: html_document
+output: 
+    html_document:
+        toc: true
 ---
 
 ___
-#### Data Import
+# Data Import
 ```{r 'Case Study'}
 library(AppliedPredictiveModeling)
 data(segmentationOriginal)
@@ -19,10 +21,11 @@ segTrainCase <- segTrain$Case
 segTrainCellID <- segTrain$Cell
 ```
 
-___
-#### Data Transformations for Individual Predictors
 
-###### Skewness:
+___
+# Data Transformations for Individual Predictors
+
+## Skewness
 A rule of thumb for checking skewness of data is the ratio between the maximum and the minimum values such that $\frac{max}{min} > 20$ is a sign of skewness. 
 The default measure of skewness implemented in the 'e1071' package is calculated by the formula:
 $$
@@ -48,7 +51,7 @@ library(e1071)
 skewness(segTrainX$VarIntenCh3)
 ```
 
-###### Dealing with skewness:
+## Dealing with skewness:
 Some data might be skewed in terms of natural units, but normally distributed on a logarithmic scale.
 ```{r 'Plot natural vs log transformation', fig.align='center', fig.height=7, fig.width=7}
 library(ggplot2)
@@ -126,9 +129,10 @@ plotLog <- ggplot(segTrainTrans, aes(x = PerimCh1)) +
 suppressWarnings(suppressMessages(grid.arrange(plotNatural, plotLog, ncol = 2)))
 ```
 
+
 ___
-#### Data Transformations for Multiple Predictors
-##### Two predictors
+# Data Transformations for Multiple Predictors
+## Two predictors
 Data transformation for two predictors using the 'prcomp' function from the 'stats' package
 ```{r 'Data Transformations using prcomp', fig.align='center', fig.height=7, fig.width=8}
 
@@ -155,7 +159,7 @@ suppressWarnings(suppressMessages(grid.arrange(plotOriginal, plotTrans, ncol = 2
 ```
 Note: The axes in the book for the first plot are flipped and incorrectly labeled.
 
-##### Entire dataset
+## Entire dataset
 Zero variance predictors need to be removed, because PCA uses variance to determine the components.
 ```{r 'Find and remove zero variance predictors'}
 ## Check for zero variance predictors
@@ -241,7 +245,9 @@ matrixPlot <- ggpairs(segRot,
 matrixPlot
 ```
 
-#### Removing variables
+
+___
+# Removing variables
 ```{r 'Removing variables', fig.align='center', fig.height=9, fig.width=10}
 ## Get correlation matrix
 segCorr <- cor(segTrainTrans)
@@ -257,7 +263,8 @@ length(highCorr)
 ```
 
 
-#### Creating Dummy variables
+___
+# Creating Dummy variables
 ```{r 'Dummy variables'}
 data(cars)
 Type <- c("convertible", "coupe", "hatchback", "sedan", "wagon")

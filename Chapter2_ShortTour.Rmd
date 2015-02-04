@@ -1,11 +1,12 @@
 ---
 title: 'Chapter 2: Examples'
-output: html_document
+output: 
+    html_document:
+        toc: true
 ---
 
 ___
-#### Get the data:
-
+# Getting the data
 - Import the library and the dataset 
 ```{r 'library import 1'}
 library(AppliedPredictiveModeling)
@@ -28,9 +29,8 @@ countNa <- function(x){
 sapply(list(cars2010, cars2011), apply, 2, countNa)
 ```
 
-___
-#### Formatting the data for plotting against engine displacement:
 
+## Formatting the data
 - Sort by engine displacement
 ```{r 'sort by engine displacement'}
 cars2010 <- cars2010[order(cars2010$EngDispl), ]
@@ -52,8 +52,8 @@ plotData <- rbind(cars2010a, cars2011a)
 ```
 
 ___
-#### Plotting fuel economy against engine displacement:
-
+# Exploring the data
+## Plotting fuel economy against engine displacement
 ```{r 'plot1', fig.align='center'}
 library(ggplot2)
 ggplot(plotData, aes(x = FE, y = EngDispl)) +
@@ -64,7 +64,8 @@ ggplot(plotData, aes(x = FE, y = EngDispl)) +
 ```
 
 ___
-#### Fit a single linear model using 10-fold CV with the 'caret' package:
+# Fitting models to data
+## Fit a single linear model using 10-fold CV with the 'caret' package
 ```{r 'model fitting lm'}
 
 library(caret)
@@ -111,8 +112,7 @@ grid.arrange(plotFit, plotCompare, nrow = 2)
     plotModel(lmOneFit, plotData, 'Linear Model')
 ```
 
-___
-#### Fit a quadratic model
+## Fit a quadratic model
 ```{r 'fitting quadratic model'}
 cars2010$ED2 <- cars2010$EngDispl^2
 cars2011$ED2 <- cars2011$EngDispl^2
@@ -132,8 +132,7 @@ lmTwoFit
     plotModel(lmTwoFit, plotData, 'Quadratic Model')
 ```
 
-___
-#### Fit a MARS model (earth package)
+## Fit a MARS model (earth package)
 ```{r 'fit MARS', fig.align='center'}
 library(earth)
 set.seed(1)
@@ -154,7 +153,8 @@ plot(marsFit)
 ```
 
 ___
-#### Get test set performance values via caret's postResample function
+# Testing model performance
+## Get test set performance values via caret's postResample function
 ```{r 'test performances'}
 ## Predict the test set data
 cars2011$lm1  <- predict(lmOneFit,  cars2011)

@@ -1,10 +1,14 @@
 ---
 title: 'Chapter 4: Overfitting and Model Tuning'
 author: "Niko Steinhoff"
-output: html_document
+output: 
+    html_document:
+        toc: true
 ---
 
-## Data Splitting
+
+___
+# Data Splitting
 ```{r 'Loading two-class data'}
 library(AppliedPredictiveModeling)
 data(twoClassData)
@@ -20,7 +24,8 @@ y <- classes
 
 ```
 
-#### Simple training/test split
+
+## Simple training/test split
 ```{r 'Simple Partitioning'}
 library(caret)
 
@@ -49,8 +54,8 @@ y_test <- y[-trainingRows]
 dim(X_train)[1]/(dim(X_test)[1] + dim(X_train)[1])
 ```
 
-#### Resampling methods
-Repeated training/test splits:
+## Resampling methods
+### Repeated training/test splits
 ```{r 'Repeated training/test splits'}
 # Set random seed so results become reproducible
 set.seed(1)
@@ -63,7 +68,7 @@ repeatedSplits <- createDataPartition(y,
 str(repeatedSplits)
 ```
 
-Bootstrap:
+### Bootstrap
 ```{r 'Bootstrap'}
 # Set random seed so results become reproducible
 set.seed(1)
@@ -81,7 +86,7 @@ notInBootstrap <- lapply(bootstrap, function(x){
 str(notInBootstrap)
 ```
 
-Folds:
+### Folds
 ```{r 'Folds'}
 # Set random seed so results become reproducible
 set.seed(1)
@@ -104,7 +109,9 @@ multifolds <- createMultiFolds(y, k = 10, times = 5)
 str(multifolds[1:25])
 ```
 
-## Basic model building
+
+___
+# Basic model building
 ```{r 'KNN'}
 # Fitting a k-nearest neighbors model
 knnFit <- knn3(x = X_train, y = y_train, k = 5)
@@ -118,3 +125,91 @@ head(knnPrediction)
 confusionMatrix(data = knnPrediction, reference = y_test)
 ```
 
+
+___
+# Determining tuning parameters
+The train function of the the 'caret' package has built in capabilities for
+different resampling methods and performance measures. 
+
+## Tuning an SVM Model
+
+Preparing the data
+```{r 'Tuning an SVM Model: Data preparation'}
+# Data about credit scoring
+library(caret)
+data(GermanCredit)
+
+# Removing near-zero variance predictors
+GermanCredit <- GermanCredit[ , -nearZeroVar(GermanCredit)]
+
+# We have to remove some dummy variables to avoid linear dependence
+str(GermanCredit)
+GermanCredit <- subset(GermanCredit, 
+                       select = -c(CheckingAccountStatus.lt.0, 
+                                   SavingsAccountBonds.lt.100,
+                                   EmploymentDuration.lt.1,
+                                   EmploymentDuration.Unemployed,
+                                   Personal.Male.Married.Widowed,
+                                   Property.Unknown,
+                                   Housing.ForFree)
+                       )
+
+# Split the data into training (80%) and test (20%) sets
+set.seed(100)
+inTrain <- createDataPartition(GermanCredit$Class,
+                               p = 0.8,
+                               list = FALSE)
+GermanCreditTrain <- GermanCredit[inTrain, ]
+GermanCreditTest <- GermanCredit[-inTrain, ]
+```
+
+Tuning the model
+```{r 'Tuning an SVM: Tuning the model'}
+library(kernlab)
+set.seed(231)
+# Estimating tuning parameter Sigma
+sigDist <- sigest(Class ~ .,
+                  data = GermanCreditTrain,
+                  frac = 1)
+
+svmTuneGrid <- data.frame(sigma = as.vector(sigDist)[1],
+                          C = 2^(-2:7))
+
+# Fitting the model
+set.seed(1056)
+svmFit <- train(Class ~ .,
+                data = GermanCreditTrain,
+                method = "svmRadial",
+                preProc = c("center", "scale"),
+                tuneGrid = svmTuneGrid,
+                trControl = trainControl(method = "repeatedcv",
+                                         repeats = 5,
+                                         classProbs = TRUE))
+
+svmFit
+```
+
+Plotting the performance profile
+```{r 'SVM performance profile'}
+# Line plot of average performance
+plot(svmFit, scales = list(x = list(log = 2)))
+```
+
+Predicting the test set
+```{r 'Predict test set'}
+predictedClasses <- predict(svmFit, GermanCreditTest)
+str(predictedClasses)
+
+# Check classification performance
+confusionMatrix(data = predictedClasses, reference = GermanCreditTest$Class)
+
+# Class probabilities
+predictedProbs <- predict(svmFit,
+                          newdata = GermanCreditTest,
+                          type = "prob")
+head(predictedProbs)
+```
+
+
+___
+# Between-Model Comparison
